@@ -7,3 +7,8 @@ venv/
 # (можно ещё на всякий случай)
 __pycache__/
 *.pyc
+
+
+.DS_Store
+
+.gitattributes	
