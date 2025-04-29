@@ -13,43 +13,35 @@ def make_message_sender(bot, chat_id):
     return send_message
 
 
-def monitor_review_status(dvmn_token, send_message_func):
+def monitor_review_status(dvmn_token, send_message_func, params):
     url = 'https://dvmn.org/api/long_polling/'
     headers = {
         'Authorization': f'Token {dvmn_token}',
     }
-    params = {}
-    
-    while True:
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=90)
-            response.raise_for_status()
-            data = response.json()
 
-            if data['status'] == 'found':
-                for attempt in data['new_attempts']:
-                    lesson_title = attempt['lesson_title']
-                    is_negative = attempt['is_negative']
-                    lesson_url = attempt['lesson_url']
+    response = requests.get(url, headers=headers, params=params, timeout=90)
+    response.raise_for_status()
+    review_response = response.json()
 
-                    if is_negative:
-                        text = f'❌ Работа "{lesson_title}" не принята, нужно доработать. Посмотреть урок - {lesson_url}'
-                    else:
-                        text = f'✅ Работа "{lesson_title}" успешно принята! Поздравляем! Посмотреть урок - {lesson_url}'
-                    
-                    send_message_func(text)
+    if review_response['status'] == 'found':
+        for attempt in review_response['new_attempts']:
+            lesson_title = attempt['lesson_title']
+            is_negative = attempt['is_negative']
+            lesson_url = attempt['lesson_url']
 
-                params['timestamp'] = data['last_attempt_timestamp']
+            if is_negative:
+                text = f'❌ Работа "{lesson_title}" не принята. [Посмотреть задание]({lesson_url})'
+            else:
+                text = f'✅ Работа "{lesson_title}" успешно принята! [Посмотреть задание]({lesson_url})'
+            
+            send_message_func(text)
 
-            elif data['status'] == 'timeout':
-                params['timestamp'] = data['last_attempt_timestamp']
+        params['timestamp'] = review_response['last_attempt_timestamp']
 
-        except requests.exceptions.ReadTimeout:
-            continue
+    elif review_response['status'] == 'timeout':
+        params['timestamp'] = review_response['last_attempt_timestamp']
 
-        except requests.exceptions.ConnectionError:
-            handle_connection_error()
-            continue
+    return params
 
 
 def handle_connection_error():
@@ -64,10 +56,19 @@ def main():
     chat_id = int(os.getenv('CHAT_ID'))
 
     bot = telegram.Bot(token=telegram_token)
-    
-    send_message_func = create_messenger(bot, chat_id)
+    send_message_func = make_message_sender(bot, chat_id)
 
-    review_user(dvmn_token, send_message_func)
+    params = {}
+
+    while True:
+        try:
+            params = monitor_review_status(dvmn_token, send_message_func, params)
+        except requests.exceptions.ReadTimeout:
+            continue
+        except requests.exceptions.ConnectionError:
+            print('Ошибка соединения. Жду 10 секунд...')
+            time.sleep(10)
+            continue
 
 
 if __name__ == '__main__':
