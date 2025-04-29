@@ -6,14 +6,14 @@ import telegram
 from dotenv import load_dotenv
 
 
-def create_messenger(bot, chat_id):
+def make_message_sender(bot, chat_id):
     def send_message(text):
         bot.send_message(chat_id=chat_id, text=text)
     
     return send_message
 
 
-def review_user(dvmn_token, send_message_func):
+def monitor_review_status(dvmn_token, send_message_func):
     url = 'https://dvmn.org/api/long_polling/'
     headers = {
         'Authorization': f'Token {dvmn_token}',
