@@ -45,13 +45,16 @@ def monitor_review_status(dvmn_token, send_message_func):
                 params['timestamp'] = data['last_attempt_timestamp']
 
         except requests.exceptions.ReadTimeout:
-            print('Таймаут ожидания. Жду новую проверку...')
             continue
 
         except requests.exceptions.ConnectionError:
-            print('Ошибка соединения. Подожду 10 секунд...')
-            time.sleep(10)
+            handle_connection_error()
             continue
+
+
+def handle_connection_error():
+    print('Ошибка соединения. Подожду 10 секунд...')
+    time.sleep(10)
 
 
 def main():
