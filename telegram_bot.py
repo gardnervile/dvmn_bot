@@ -16,6 +16,8 @@ def monitor_review_status(dvmn_token, send_message_func, params):
     response.raise_for_status()
     review_response = response.json()
 
+    new_params = {**params}
+
     if review_response['status'] == 'found':
         for attempt in review_response['new_attempts']:
             lesson_title = attempt['lesson_title']
@@ -29,19 +31,19 @@ def monitor_review_status(dvmn_token, send_message_func, params):
             
             send_message_func(text)
 
-        params['timestamp'] = review_response['last_attempt_timestamp']
+        new_params['timestamp'] = review_response['last_attempt_timestamp']
 
     elif review_response['status'] == 'timeout':
-        params['timestamp'] = review_response['last_attempt_timestamp']
+        new_params['timestamp'] = review_response['last_attempt_timestamp']
 
-    return params
+    return new_params
 
 
 def main():
     load_dotenv()
-    dvmn_token = os.getenv('TOKEN_API')
-    telegram_token = os.getenv('TG_TOKEN')
-    chat_id = int(os.getenv('CHAT_ID'))
+    dvmn_token = os.environ['TOKEN_API']
+    telegram_token = os.environ['TG_TOKEN']
+    chat_id = int(os.environ['CHAT_ID'])
 
     bot = telegram.Bot(token=telegram_token)
     send_message_func = lambda text: bot.send_message(chat_id=chat_id, text=text)
