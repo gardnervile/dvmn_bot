@@ -6,13 +6,6 @@ import telegram
 from dotenv import load_dotenv
 
 
-def make_message_sender(bot, chat_id):
-    def send_message(text):
-        bot.send_message(chat_id=chat_id, text=text)
-    
-    return send_message
-
-
 def monitor_review_status(dvmn_token, send_message_func, params):
     url = 'https://dvmn.org/api/long_polling/'
     headers = {
@@ -44,11 +37,6 @@ def monitor_review_status(dvmn_token, send_message_func, params):
     return params
 
 
-def handle_connection_error():
-    print('Ошибка соединения. Подожду 10 секунд...')
-    time.sleep(10)
-
-
 def main():
     load_dotenv()
     dvmn_token = os.getenv('TOKEN_API')
@@ -56,7 +44,7 @@ def main():
     chat_id = int(os.getenv('CHAT_ID'))
 
     bot = telegram.Bot(token=telegram_token)
-    send_message_func = make_message_sender(bot, chat_id)
+    send_message_func = lambda text: bot.send_message(chat_id=chat_id, text=text)
 
     params = {}
 
