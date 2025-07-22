@@ -7,12 +7,10 @@ from dotenv import load_dotenv
 import logging
 
 
-logging.basicConfig(
-    level=logging.INFO,  # или DEBUG если хочешь подробнее
-    format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
-)
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+logger.info("Bot started")
 
 
 def monitor_review_status(dvmn_token, send_message_func, params):
