@@ -4,6 +4,15 @@ import time
 
 import telegram
 from dotenv import load_dotenv
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,  # или DEBUG если хочешь подробнее
+    format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 
 def monitor_review_status(dvmn_token, send_message_func, params):
