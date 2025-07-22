@@ -48,10 +48,13 @@ class TelegramLogsHandler(logging.Handler):
 
     def emit(self, record):
         log_entry = self.format(record)
-        try:
-            self.tg_bot.send_message(chat_id=self.chat_id, text=log_entry)
-        except Exception as e:
-            print(f"Failed to send log to Telegram: {e}")
+        max_length = 4000  # лимит на сообщение
+
+        for i in range(0, len(log_entry), max_length):
+            try:
+                self.tg_bot.send_message(chat_id=self.chat_id, text=log_entry[i:i+max_length])
+            except Exception as e:
+                print(f"Failed to send log chunk to Telegram: {e}")
 
 
 def start(update, context):
