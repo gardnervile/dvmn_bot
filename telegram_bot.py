@@ -40,7 +40,9 @@ def monitor_review_status(dvmn_token, send_message_func, params):
 
         new_params['timestamp'] = review_response['last_attempt_timestamp']
     elif review_response['status'] == 'timeout':
-        new_params['timestamp'] = review_response['last_attempt_timestamp']
+        last_ts = review_response.get('last_attempt_timestamp')
+        if last_ts:
+            new_params['timestamp'] = last_ts
 
     return new_params
 
