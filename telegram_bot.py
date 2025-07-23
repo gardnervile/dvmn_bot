@@ -8,15 +8,21 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from telegram import Bot
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
+from requests.exceptions import ReadTimeout
 
 
 def monitor_review_status(dvmn_token, send_message_func, params):
     url = 'https://dvmn.org/api/long_polling/'
     headers = {'Authorization': f'Token {dvmn_token}'}
 
-    response = requests.get(url, headers=headers, params=params, timeout=90)
-    response.raise_for_status()
-    review_response = response.json()
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=90)
+        response.raise_for_status()
+        review_response = response.json()
+    except ReadTimeout:
+        return params
+    except Exception as e:
+        raise e
 
     new_params = {**params}
 
@@ -33,7 +39,6 @@ def monitor_review_status(dvmn_token, send_message_func, params):
             send_message_func(text)
 
         new_params['timestamp'] = review_response['last_attempt_timestamp']
-
     elif review_response['status'] == 'timeout':
         new_params['timestamp'] = review_response['last_attempt_timestamp']
 
