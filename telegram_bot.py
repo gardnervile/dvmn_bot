@@ -82,41 +82,24 @@ def main():
     logger = logging.getLogger('bot_logger')
     logger.setLevel(logging.INFO)
 
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
     stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
+    stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(stream_handler)
 
-    telegram_handler = TelegramLogsHandler(bot, chat_id)
-    telegram_handler.setFormatter(formatter)
-    logger.addHandler(telegram_handler)
-
     logger.info("Бот запущен")
+    bot.send_message(chat_id=chat_id, text="Бот запущен")
 
-    params = {}
-
-    def send_message(text):
-        bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
-
-    while True:
-        try:
-            params = monitor_review_status(dvmn_token, send_message, params)
-        except Exception:
-            logger.exception('❌ Бот упал с ошибкой:')
-            time.sleep(30)
-
-
-if __name__ == '__main__':
     try:
-        main()
-    except Exception as e:
-        import traceback
-        load_dotenv()
-        telegram_token = os.environ['TG_TOKEN']
-        chat_id = os.environ['CHAT_ID']
-
-        bot = telegram.Bot(token=telegram_token)
-        bot.send_message(chat_id=chat_id, text='❌ Бот упал с ошибкой:')
-        bot.send_message(chat_id=chat_id, text=traceback.format_exc())
-        raise
+        params = {}
+        while True:
+            try:
+                params = monitor_review_status(dvmn_token, lambda msg: bot.send_message(chat_id=chat_id, text=msg), params)
+            except Exception as e:
+                logger.exception("Ошибка в работе бота:")
+                bot.send_message(chat_id=chat_id, text="Бот упал с ошибкой:")
+                bot.send_message(chat_id=chat_id, text=str(e))
+                time.sleep(10)
+    except Exception as fatal_error:
+        logger.critical("Фатальная ошибка:")
+        bot.send_message(chat_id=chat_id, text="Фатальная ошибка:")
+        bot.send_message(chat_id=chat_id, text=str(fatal_error))
