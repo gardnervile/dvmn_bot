@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from telegram import Bot
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 from requests.exceptions import ReadTimeout
+import traceback
 
 
 def monitor_review_status(dvmn_token, send_message_func, params):
@@ -104,8 +105,8 @@ if __name__ == '__main__':
     while True:
         try:
             params = monitor_review_status(dvmn_token, send_message, params)
-        except Exception as e:
-            error_type = type(e).__name__
-            logger.error(f'❌ Бот упал с ошибкой: {error_type}')
+        except Exception:
+            tb = traceback.format_exc()
+            short_tb = '\n'.join(tb.splitlines()[-5:])  # последние 10 строк
+            logger.error(f'❌ Бот упал с ошибкой:\n```{short_tb}```')
             time.sleep(10)
-
