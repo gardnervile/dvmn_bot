@@ -72,7 +72,7 @@ def echo(update, context):
     update.message.reply_text(update.message.text)
 
 
-def main():
+if __name__ == '__main__':
     load_dotenv()
 
     dvmn_token = os.environ['TOKEN_API']
@@ -84,24 +84,28 @@ def main():
     logger = logging.getLogger('bot_logger')
     logger.setLevel(logging.INFO)
 
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
     stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logger.info("Бот запущен")
-    bot.send_message(chat_id=chat_id, text="Бот запущен")
+    telegram_handler = TelegramLogsHandler(bot, chat_id)
+    telegram_handler.setFormatter(formatter)
+    logger.addHandler(telegram_handler)
 
-    try:
-        params = {}
-        while True:
-            try:
-                params = monitor_review_status(dvmn_token, lambda msg: bot.send_message(chat_id=chat_id, text=msg), params)
-            except Exception as e:
-                logger.exception("Ошибка в работе бота:")
-                bot.send_message(chat_id=chat_id, text="Бот упал с ошибкой:")
-                bot.send_message(chat_id=chat_id, text=str(e))
-                time.sleep(10)
-    except Exception as fatal_error:
-        logger.critical("Фатальная ошибка:")
-        bot.send_message(chat_id=chat_id, text="Фатальная ошибка:")
-        bot.send_message(chat_id=chat_id, text=str(fatal_error))
+    logger.info("Бот запущен")
+
+    def send_message(text):
+        bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown', disable_web_page_preview=True)
+
+    params = {}
+
+    while True:
+        try:
+            params = monitor_review_status(dvmn_token, send_message, params)
+        except Exception as e:
+            error_type = type(e).__name__
+            logger.error(f'❌ Бот упал с ошибкой: {error_type}')
+            time.sleep(10)
+
