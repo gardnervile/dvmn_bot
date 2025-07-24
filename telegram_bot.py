@@ -1,17 +1,19 @@
-import logging
 import os
 import time
-
-import requests
-from apscheduler.schedulers.background import BackgroundScheduler
-from dotenv import load_dotenv
-from telegram import Bot
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
-from requests.exceptions import ReadTimeout
+import logging
 import traceback
+import requests
+
+from dotenv import load_dotenv
+from requests.exceptions import ReadTimeout
+from telegram import Bot
 
 
 logger = logging.getLogger('bot_logger')
+
+
+def send_message(bot, chat_id, text):
+    bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown', disable_web_page_preview=True)
 
 
 def check_review_status(dvmn_token, send_message_func, params):
@@ -29,15 +31,14 @@ def check_review_status(dvmn_token, send_message_func, params):
             lesson_title = attempt['lesson_title']
             is_negative = attempt['is_negative']
             lesson_url = attempt['lesson_url']
-
-            if is_negative:
-                text = f'❌ Работа "{lesson_title}" не принята. [Посмотреть задание]({lesson_url})'
-            else:
-                text = f'✅ Работа "{lesson_title}" успешно принята! [Посмотреть задание]({lesson_url})'
+            text = (
+                f'❌ Работа "{lesson_title}" не принята. [Посмотреть задание]({lesson_url})'
+                if is_negative else
+                f'✅ Работа "{lesson_title}" успешно принята! [Посмотреть задание]({lesson_url})'
+            )
             send_message_func(text)
 
         new_params['timestamp'] = review_response['last_attempt_timestamp']
-
     elif review_response['status'] == 'timeout':
         new_params['timestamp'] = review_response['last_attempt_timestamp']
 
@@ -61,9 +62,8 @@ class TelegramLogsHandler(logging.Handler):
                 print(f"Failed to send log chunk to Telegram: {e}")
 
 
-if __name__ == '__main__':
+def main():
     load_dotenv()
-
     dvmn_token = os.environ['TOKEN_API']
     telegram_token = os.environ['TG_TOKEN']
     chat_id = os.environ['CHAT_ID']
@@ -71,7 +71,6 @@ if __name__ == '__main__':
     bot = Bot(token=telegram_token)
 
     logger.setLevel(logging.INFO)
-
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
     stream_handler = logging.StreamHandler()
@@ -84,19 +83,19 @@ if __name__ == '__main__':
 
     logger.info("Бот запущен")
 
-    def send_message(text):
-        bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown', disable_web_page_preview=True)
-
     params = {}
 
     while True:
         try:
-            params = check_review_status(dvmn_token, send_message, params)
-        except requests.exceptions.ReadTimeout:
+            params = check_review_status(dvmn_token, lambda text: send_message(bot, chat_id, text), params)
+        except ReadTimeout:
             continue
         except Exception:
             tb = traceback.format_exc()
-            short_tb = '\n'.join(tb.splitlines()[-5:])  # последние 5 строк
+            short_tb = '\n'.join(tb.splitlines()[-5:])
             logger.error(f'❌ Бот упал с ошибкой:\n```{short_tb}```')
             time.sleep(10)
 
+
+if __name__ == '__main__':
+    main()
