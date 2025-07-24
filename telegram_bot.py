@@ -3,7 +3,6 @@ import os
 import time
 
 import requests
-import telegram
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from telegram import Bot
@@ -12,18 +11,16 @@ from requests.exceptions import ReadTimeout
 import traceback
 
 
-def monitor_review_status(dvmn_token, send_message_func, params):
+logger = logging.getLogger('bot_logger')
+
+
+def check_review_status(dvmn_token, send_message_func, params):
     url = 'https://dvmn.org/api/long_polling/'
     headers = {'Authorization': f'Token {dvmn_token}'}
 
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=90)
-        response.raise_for_status()
-        review_response = response.json()
-    except ReadTimeout:
-        return params
-    except Exception as e:
-        raise e
+    response = requests.get(url, headers=headers, params=params, timeout=90)
+    response.raise_for_status()
+    review_response = response.json()
 
     new_params = {**params}
 
@@ -40,10 +37,9 @@ def monitor_review_status(dvmn_token, send_message_func, params):
             send_message_func(text)
 
         new_params['timestamp'] = review_response['last_attempt_timestamp']
+
     elif review_response['status'] == 'timeout':
-        last_ts = review_response.get('last_attempt_timestamp')
-        if last_ts:
-            new_params['timestamp'] = last_ts
+        new_params['timestamp'] = review_response['last_attempt_timestamp']
 
     return new_params
 
@@ -56,21 +52,13 @@ class TelegramLogsHandler(logging.Handler):
 
     def emit(self, record):
         log_entry = self.format(record)
-        max_length = 4000  # лимит на сообщение
+        max_length = 4000
 
         for i in range(0, len(log_entry), max_length):
             try:
                 self.tg_bot.send_message(chat_id=self.chat_id, text=log_entry[i:i+max_length])
             except Exception as e:
                 print(f"Failed to send log chunk to Telegram: {e}")
-
-
-def start(update, context):
-    update.message.reply_text('Бот запущен и работает!')
-
-
-def echo(update, context):
-    update.message.reply_text(update.message.text)
 
 
 if __name__ == '__main__':
@@ -82,7 +70,6 @@ if __name__ == '__main__':
 
     bot = Bot(token=telegram_token)
 
-    logger = logging.getLogger('bot_logger')
     logger.setLevel(logging.INFO)
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -104,9 +91,12 @@ if __name__ == '__main__':
 
     while True:
         try:
-            params = monitor_review_status(dvmn_token, send_message, params)
+            params = check_review_status(dvmn_token, send_message, params)
+        except requests.exceptions.ReadTimeout:
+            continue
         except Exception:
             tb = traceback.format_exc()
-            short_tb = '\n'.join(tb.splitlines()[-5:])  # последние 10 строк
+            short_tb = '\n'.join(tb.splitlines()[-5:])  # последние 5 строк
             logger.error(f'❌ Бот упал с ошибкой:\n```{short_tb}```')
             time.sleep(10)
+
