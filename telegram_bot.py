@@ -35,11 +35,13 @@ def check_review_status(dvmn_token, send_message_func, params):
             )
             send_message_func(text)
 
-        new_params['timestamp'] = review_response['last_attempt_timestamp']
+        new_params['timestamp'] = review_response.get('last_attempt_timestamp')
+
     elif review_response['status'] == 'timeout':
-        new_params['timestamp'] = review_response['last_attempt_timestamp']
+        new_params['timestamp'] = review_response.get('timestamp_to_request')
 
     return new_params
+
 
 
 class TelegramLogsHandler(logging.Handler):
@@ -100,6 +102,7 @@ def main():
     while True:
         try:              
             params = check_review_status(dvmn_token, send_message, params)
+        except ReadTimeout:
             continue
         except Exception:
             logger.exception('❌ Бот упал с ошибкой:')
