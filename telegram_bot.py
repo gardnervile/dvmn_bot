@@ -90,17 +90,20 @@ def main():
     logger.addHandler(telegram_handler)
 
     logger.info("Бот запущен")
-    
+
     send_message = partial(
-            bot.send_message,
-            chat_id=chat_id,
-            parse_mode='Markdown',
-            disable_web_page_preview=True
-        )        
+        bot.send_message,
+        chat_id=chat_id,
+        parse_mode='Markdown',
+        disable_web_page_preview=True
+    )
+
+    send_message(text='🤖 Бот запущен и слушает Devman!')
+
     params = {}
 
     while True:
-        try:              
+        try:
             params = check_review_status(dvmn_token, send_message, params)
         except ReadTimeout:
             continue
